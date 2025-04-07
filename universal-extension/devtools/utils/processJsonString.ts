@@ -1,7 +1,7 @@
 import { processArrayWithSizeLimit } from "~devtools/utils/processArrayWithSizeLimit"
 import { truncateStringsInData } from "~devtools/utils/truncateStringsInData"
 
-import { devtoolsSettings } from "../devtools"
+import { devtoolsSettings } from "../"
 
 // Modified processJsonString to handle arrays with size limit
 export function processJsonString(jsonString, maxLength) {

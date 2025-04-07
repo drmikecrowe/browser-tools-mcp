@@ -1,6 +1,6 @@
 import { validateServerIdentity } from "~devtools/utils/validateServerIdentity"
 
-import { devtoolsSettings } from "../devtools"
+import { devtoolsSettings } from "../"
 import { processJsonString } from "./processJsonString"
 
 // Helper to send logs to browser-connector

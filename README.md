@@ -2,7 +2,7 @@
 
 > Make your AI tools 10x more aware and capable of interacting with your browser
 
-This application is a powerful browser monitoring and interaction tool that enables AI-powered applications via Anthropic's Model Context Protocol (MCP) to capture and analyze browser data through a Chrome extension.
+This application is a powerful browser monitoring and interaction tool that enables AI-powered applications via Anthropic's Model Context Protocol (MCP) to capture and analyze browser data through an Extension.
 
 Read our [docs](https://browsertools.agentdesk.ai/) for the full installation, quickstart and contribution guides.
 
@@ -13,6 +13,7 @@ Check out our project roadmap here: [Github Roadmap / Project Board](https://git
 ## Updates
 
 v1.2.0 is out! Here's a quick breakdown of the update:
+
 - You can now enable "Allow Auto-Paste into Cursor" within the DevTools panel. Screenshots will be automatically pasted into Cursor (just make sure to focus/click into the Agent input field in Cursor, otherwise it won't work!)
 - Integrated a suite of SEO, performance, accessibility, and best practice analysis tools via Lighthouse
 - Implemented a NextJS specific prompt used to improve SEO for a NextJS application
@@ -30,9 +31,10 @@ There are three components to run this MCP tool:
 2. Install the MCP server from this command within your IDE: `npx @agentdeskai/browser-tools-mcp@latest`
 3. Open a new terminal and run this command: `npx @agentdeskai/browser-tools-server@latest`
 
-* Different IDEs have different configs but this command is generally a good starting point; please reference your IDEs docs for the proper config setup
+- Different IDEs have different configs but this command is generally a good starting point; please reference your IDEs docs for the proper config setup
 
 IMPORTANT TIP - there are two servers you need to install. There's...
+
 - browser-tools-server (local nodejs server that's a middleware for gathering logs)
 and
 - browser-tools-mcp (MCP server that you install into your IDE that communicates w/ the extension + browser-tools-server)
@@ -43,7 +45,8 @@ and
 After those three steps, open up your chrome dev tools and then the BrowserToolsMCP panel.
 
 If you're still having issues try these steps:
-- Quit / close down your browser. Not just the window but all of Chrome itself. 
+
+- Quit / close down your browser. Not just the window but all of Chrome itself.
 - Restart the local node server (browser-tools-server)
 - Make sure you only have ONE instance of chrome dev tools panel open
 
@@ -51,7 +54,7 @@ After that, it should work but if it doesn't let me know and I can share some mo
 
 If you have any questions or issues, feel free to open an issue ticket! And if you have any ideas to make this better, feel free to reach out or open an issue ticket with an enhancement tag or reach out to me at [@tedx_ai on x](https://x.com/tedx_ai)
 
-## Full Update Notes:
+## Full Update Notes
 
 Coding agents like Cursor can run these audits against the current page seamlessly. By leveraging Puppeteer and the Lighthouse npm library, BrowserTools MCP can now:
 
@@ -172,10 +175,10 @@ Runs all debugging tools in a particular sequence
 There are three core components all used to capture and analyze browser data:
 
 1. **Chrome Extension**: A browser extension that captures screenshots, console logs, network activity and DOM elements.
-2. **Node Server**: An intermediary server that facilitates communication between the Chrome extension and any instance of an MCP server.
+2. **Node Server**: An intermediary server that facilitates communication between the Extension and any instance of an MCP server.
 3. **MCP Server**: A Model Context Protocol server that provides standardized tools for AI clients to interact with the browser.
 
-```
+```txt
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐     ┌─────────────┐
 │  MCP Client │ ──► │  MCP Server  │ ──► │  Node Server  │ ──► │   Chrome    │
 │  (e.g.      │ ◄── │  (Protocol   │ ◄── │ (Middleware)  │ ◄── │  Extension  │
@@ -190,9 +193,9 @@ about a new tool that they can use.
 
 These tools can call out to external APIs but in our case, **all logs are stored locally** on your machine and NEVER sent out to any third-party service or API. BrowserTools MCP runs a local instance of a NodeJS API server which communicates with the BrowserTools Chrome Extension.
 
-All consumers of the BrowserTools MCP Server interface with the same NodeJS API and Chrome extension.
+All consumers of the BrowserTools MCP Server interface with the same NodeJS API and the Extension.
 
-#### Chrome Extension
+### Chrome Extension
 
 - Monitors XHR requests/responses and console logs
 - Tracks selected DOM elements
@@ -200,16 +203,16 @@ All consumers of the BrowserTools MCP Server interface with the same NodeJS API 
 - Connects to Websocket server to capture/send screenshots
 - Allows user to configure token/truncation limits + screenshot folder path
 
-#### Node Server
+### Node Server
 
-- Acts as middleware between the Chrome extension and MCP server
-- Receives logs and currently selected element from Chrome extension
+- Acts as middleware between the the Extension and MCP server
+- Receives logs and currently selected element from the Extension
 - Processes requests from MCP server to capture logs, screenshot or current element
-- Sends Websocket command to the Chrome extension for capturing a screenshot
+- Sends Websocket command to the Extension for capturing a screenshot
 - Intelligently truncates strings and # of duplicate objects in logs to avoid token limits
 - Removes cookies and sensitive headers to avoid sending to LLMs in MCP clients
 
-#### MCP Server
+### MCP Server
 
 - Implements the Model Context Protocol
 - Provides standardized tools for AI clients

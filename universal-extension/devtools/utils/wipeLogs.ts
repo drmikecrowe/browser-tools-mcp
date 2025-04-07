@@ -1,4 +1,4 @@
-import { devtoolsSettings } from "../devtools"
+import { devtoolsSettings } from "../"
 
 // Function to clear logs on the server
 export function wipeLogs() {

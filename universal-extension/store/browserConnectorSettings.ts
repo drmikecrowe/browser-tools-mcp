@@ -12,6 +12,7 @@ export interface BrowserConnectorSettings {
   serverHost: string
   serverPort: number
   allowAutoPaste: boolean
+  autoUpdateUrls: boolean
 }
 
 // Default settings
@@ -25,7 +26,8 @@ export const defaultSettings: BrowserConnectorSettings = {
   screenshotPath: "",
   serverHost: "localhost",
   serverPort: 3025,
-  allowAutoPaste: false
+  allowAutoPaste: false,
+  autoUpdateUrls: true
 }
 
 // Create a storage instance
@@ -42,7 +44,11 @@ const SETTINGS_KEY = "browserConnectorSettings"
  */
 export async function getSettings(): Promise<BrowserConnectorSettings> {
   const settings = await storage.get<BrowserConnectorSettings>(SETTINGS_KEY)
-  return settings ? { ...defaultSettings, ...settings } : { ...defaultSettings }
+  const final = settings
+    ? { ...defaultSettings, ...settings }
+    : { ...defaultSettings }
+  console.log("Background: Got settings:", final)
+  return final
 }
 
 /**
@@ -56,7 +62,7 @@ export async function saveSettings(
   const currentSettings = await getSettings()
   const newSettings = { ...currentSettings, ...settings }
   await storage.set(SETTINGS_KEY, newSettings)
-  
+
   // Notify all parts of the extension about the settings update
   chrome.runtime.sendMessage({
     type: "SETTINGS_UPDATED",
@@ -78,18 +84,18 @@ export function onSettingsChanged(
       callback(newSettings)
     }
   }
-  
+
   chrome.storage.onChanged.addListener(listener)
-  
+
   // Also listen for runtime messages about settings updates
   const messageListener = (message) => {
     if (message.type === "SETTINGS_UPDATED") {
       callback(message.settings)
     }
   }
-  
+
   chrome.runtime.onMessage.addListener(messageListener)
-  
+
   // Return a function to remove the listeners
   return () => {
     chrome.storage.onChanged.removeListener(listener)

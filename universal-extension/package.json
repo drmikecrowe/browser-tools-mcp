@@ -1,23 +1,33 @@
 {
-  "name": "universal-extension",
-  "displayName": "Universal extension",
-  "version": "0.0.1",
-  "description": "Browser-Tools universal MCP extension for all browsers",
+  "name": "@agentdeskai/browser-tools-mcp",
+  "version": "1.3.0",
+  "description": "MCP tool for AI code editors to capture data from a browser such as console logs, network requests, screenshots and more",
   "author": "browsertools-mcp@agentdesk.ai",
   "scripts": {
-    "dev": "plasmo dev --target=firefox-mv2",
-    "build": "plasmo build --target=firefox-mv2",
-    "package": "plasmo package --target=firefox-mv2"
+    "dev:firefox": "plasmo dev --target=firefox-mv2",
+    "dev:chrome": "plasmo dev --target=chrome-mv3",
+    "build:firefox": "cross-env PARCEL_WORKER_BACKEND=process plasmo build --target=firefox-mv2",
+    "build:chrome": "cross-env PARCEL_WORKER_BACKEND=process plasmo build --target=chrome-mv3",
+    "build": "rimraf build/* && npm run build:firefox && npm run build:chrome"
   },
   "dependencies": {
-    "plasmo": "0.90.3"
+    "@plasmohq/messaging": "^0.7.1",
+    "@plasmohq/storage": "^1.15.0",
+    "plasmo": "0.90.3",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
-    "@types/chrome": "0.0.258",
-    "@types/node": "20.11.5",
-    "prettier": "3.2.4",
-    "typescript": "5.3.3"
+    "@ianvs/prettier-plugin-sort-imports": "4.4.1",
+    "@plasmohq/parcel-resolver": "^0.14.1",
+    "@types/chrome": "^0.0.313",
+    "@types/node": "^22.14.0",
+    "@types/react": "18.2.48",
+    "@types/react-dom": "18.2.18",
+    "cross-env": "^7.0.3",
+    "prettier": "3.5.3",
+    "rimraf": "^6.0.1",
+    "typescript": "5.8.3"
   },
   "manifest": {
     "host_permissions": [
