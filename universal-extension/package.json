@@ -2,8 +2,8 @@
   "name": "universal-extension",
   "displayName": "Universal extension",
   "version": "0.0.1",
-  "description": "Browser-Tools universal MCP extension for all browser",
-  "author": "Mike Crowe <drmikecrowe@gmail.com>",
+  "description": "Browser-Tools universal MCP extension for all browsers",
+  "author": "browsertools-mcp@agentdesk.ai",
   "scripts": {
     "dev": "plasmo dev --target=firefox-mv2",
     "build": "plasmo build --target=firefox-mv2",
@@ -34,15 +34,24 @@
     "manifest_v2": {
       "applications": {
         "gecko": {
-          "id": "browser-tools-mcp@drmikecrowe.com"
+          "id": "browsertools-mcp@agentdesk.ai",
+          "strict_min_version": "60.0"
         }
       },
+      "background": {
+        "scripts": [
+          "background.js"
+        ],
+        "persistent": true
+      },
       "permissions": [
+        "devtools",
         "activeTab",
         "storage",
         "tabs",
-        "devtools",
-        "<all_urls>"
+        "webRequest",
+        "<all_urls>",
+        "debugger"
       ]
     }
   },

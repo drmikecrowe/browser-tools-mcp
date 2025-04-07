@@ -1,17 +1,10 @@
-// Store settings
-let panelSettings = {
-  logLimit: 50,
-  queryLimit: 30000,
-  stringSizeLimit: 500,
-  showRequestHeaders: false,
-  showResponseHeaders: false,
-  maxLogSize: 20000,
-  screenshotPath: "",
-  // Add server connection settings
-  serverHost: "localhost",
-  serverPort: 3025,
-  allowAutoPaste: false // Default auto-paste setting
-}
+// Import the shared settings store
+import {
+  getSettings,
+  onSettingsChanged,
+  saveSettings as saveSettingsToStore
+} from "../../store/browserConnectorSettings"
+import type { BrowserConnectorSettings } from "../../store/browserConnectorSettings"
 
 // Track connection status
 let serverConnected = false
@@ -21,18 +14,27 @@ let isDiscoveryInProgress = false
 // Add an AbortController to cancel fetch operations
 let discoveryController = null
 
+// Store settings
+let panelSettings: BrowserConnectorSettings
+
 // Load saved settings on startup
-chrome.storage.local.get(["browserConnectorSettings"], (result) => {
-  if (result.browserConnectorSettings) {
-    panelSettings = { ...panelSettings, ...result.browserConnectorSettings }
-    updateUIFromSettings()
-  }
+getSettings().then((settings) => {
+  panelSettings = settings
+  updateUIFromSettings()
 
   // Create connection status banner at the top
   createConnectionBanner()
 
-  // Automatically discover server on panel load with quiet mode enabled
-  discoverServer(true)
+  // Try to discover server on startup if not connected
+  if (!serverConnected) {
+    discoverServer(true) // Quiet mode
+  }
+})
+
+// Listen for settings changes
+onSettingsChanged((settings) => {
+  panelSettings = settings
+  updateUIFromSettings()
 })
 
 // Add listener for connection status updates from background script (page refresh events)
@@ -374,14 +376,16 @@ function updateUIFromSettings() {
   allowAutoPasteCheckbox.checked = panelSettings.allowAutoPaste
 }
 
-// Save settings
+// Function to save settings
 function saveSettings() {
-  chrome.storage.local.set({ browserConnectorSettings: panelSettings })
-  // Notify devtools.js about settings change
-  chrome.runtime.sendMessage({
-    type: "SETTINGS_UPDATED",
-    settings: panelSettings
-  })
+  // Save to shared store
+  saveSettingsToStore(panelSettings)
+    .then(() => {
+      console.log("Settings saved successfully")
+    })
+    .catch((error) => {
+      console.error("Error saving settings:", error)
+    })
 }
 
 // Add event listeners for all inputs
@@ -579,95 +583,101 @@ function scheduleReconnectAttempt() {
 
 // Helper function to try connecting to a server
 async function tryServerConnection(host, port) {
+  // Cancel any ongoing discovery operations
+  cancelOngoingDiscovery()
+
+  // Check if the discovery process was cancelled
+  if (!isDiscoveryInProgress) {
+    return false
+  }
+
+  // Create a local timeout that won't abort the entire discovery process
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, 500) // 500ms timeout for each connection attempt
+
   try {
     // Check if the discovery process was cancelled
     if (!isDiscoveryInProgress) {
       return false
     }
 
-    // Create a local timeout that won't abort the entire discovery process
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => {
-      controller.abort()
-    }, 500) // 500ms timeout for each connection attempt
+    // Use identity endpoint for validation
+    const response = await fetch(`http://${host}:${port}/.identity`, {
+      // Use a local controller for this specific request timeout
+      // but also respect the global discovery cancellation
+      signal: discoveryController
+        ? AbortSignal.any([controller.signal, discoveryController.signal])
+        : controller.signal
+    })
 
-    try {
-      // Use identity endpoint for validation
-      const response = await fetch(`http://${host}:${port}/.identity`, {
-        // Use a local controller for this specific request timeout
-        // but also respect the global discovery cancellation
-        signal: discoveryController
-          ? AbortSignal.any([controller.signal, discoveryController.signal])
-          : controller.signal
-      })
+    clearTimeout(timeoutId)
 
-      clearTimeout(timeoutId)
+    // Check again if discovery was cancelled during the fetch
+    if (!isDiscoveryInProgress) {
+      return false
+    }
 
-      // Check again if discovery was cancelled during the fetch
-      if (!isDiscoveryInProgress) {
+    if (response.ok) {
+      const identity = await response.json()
+
+      // Verify this is actually our server by checking the signature
+      if (identity.signature !== "mcp-browser-connector-24x7") {
+        console.log(
+          `Found a server at ${host}:${port} but it's not the Browser Tools server`
+        )
         return false
       }
 
-      if (response.ok) {
-        const identity = await response.json()
+      console.log(`Successfully found server at ${host}:${port}`)
 
-        // Verify this is actually our server by checking the signature
-        if (identity.signature !== "mcp-browser-connector-24x7") {
-          console.log(
-            `Found a server at ${host}:${port} but it's not the Browser Tools server`
-          )
-          return false
-        }
+      // Update settings with discovered server
+      panelSettings.serverHost = host
+      panelSettings.serverPort = parseInt(identity.port, 10)
+      serverHostInput.value = panelSettings.serverHost
+      serverPortInput.value = panelSettings.serverPort.toString()
+      saveSettings()
 
-        console.log(`Successfully found server at ${host}:${port}`)
+      statusIcon.className = "status-indicator status-connected"
+      statusText.textContent = `Discovered ${identity.name} v${identity.version} at ${host}:${identity.port}`
 
-        // Update settings with discovered server
-        panelSettings.serverHost = host
-        panelSettings.serverPort = parseInt(identity.port, 10)
-        serverHostInput.value = panelSettings.serverHost
-        serverPortInput.value = panelSettings.serverPort.toString()
-        saveSettings()
+      // Update connection banner with server info
+      updateConnectionBanner(true, identity)
 
-        statusIcon.className = "status-indicator status-connected"
-        statusText.textContent = `Discovered ${identity.name} v${identity.version} at ${host}:${identity.port}`
+      // Update connection status
+      serverConnected = true
 
-        // Update connection banner with server info
-        updateConnectionBanner(true, identity)
-
-        // Update connection status
-        serverConnected = true
-
-        // Clear any scheduled reconnect attempts
-        if (reconnectAttemptTimeout) {
-          clearTimeout(reconnectAttemptTimeout)
-          reconnectAttemptTimeout = null
-        }
-
-        // End the discovery process
-        isDiscoveryInProgress = false
-
-        // Successfully found server
-        return true
+      // Clear any scheduled reconnect attempts
+      if (reconnectAttemptTimeout) {
+        clearTimeout(reconnectAttemptTimeout)
+        reconnectAttemptTimeout = null
       }
 
-      return false
-    } finally {
-      clearTimeout(timeoutId)
+      // End the discovery process
+      isDiscoveryInProgress = false
+
+      // Successfully found server
+      return true
     }
+
+    return false
   } catch (error) {
     // Ignore connection errors during discovery
-    // But check if it was an abort (cancellation)
+    console.log(`Connection error for ${host}:${port}: ${error.message}`)
+
+    // Check if it was an abort (cancellation)
     if (error.name === "AbortError") {
       // Check if this was due to the global discovery cancellation
       if (discoveryController && discoveryController.signal.aborted) {
         console.log("Connection attempt aborted by global cancellation")
         return "aborted"
       }
-      // Otherwise it was just a timeout for this specific connection attempt
-      return false
     }
-    console.log(`Connection error for ${host}:${port}: ${error.message}`)
+
     return false
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -846,7 +856,6 @@ async function discoverServer(quietMode = false) {
         totalChecked++
         statusText.textContent = `Scanning local ports... (${totalChecked}/${totalAttempts}) - Trying ${host}:${port}`
         console.log(`Checking ${host}:${port}...`)
-
         const result = await tryServerConnection(host, port)
 
         // Check for cancellation or success
@@ -879,16 +888,15 @@ async function discoverServer(quietMode = false) {
         totalChecked++
         statusText.textContent = `Scanning remote hosts... (${totalChecked}/${totalAttempts}) - Trying ${host}:${port}`
         console.log(`Checking ${host}:${port}...`)
-
         const result = await tryServerConnection(host, port)
 
         // Check for cancellation or success
-        if (result === "aborted" || !isDiscoveryInProgress) {
-          console.log("Discovery process was cancelled")
-          return false
+        if (result === "aborted") {
+          console.log("Discovery aborted during remote scan")
+          break
         } else if (result === true) {
-          console.log(`Server found at ${host}:${port}`)
-          return true // Successfully found server
+          console.log("Server found during remote scan")
+          return true
         }
       }
     }

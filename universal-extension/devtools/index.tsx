@@ -1,24 +1,20 @@
 import "./devtools"
 
-// Initialize the DevTools panel
-document.addEventListener("DOMContentLoaded", () => {
-  // Create the main container
-  const container = document.createElement("div");
-  container.className = "browser-tools-devtools-panel";
-  
-  // Add header
-  const header = document.createElement("h1");
-  header.textContent = "BrowserTools MCP";
-  container.appendChild(header);
-  
-  // Append to body
-  document.body.appendChild(container);
-  
-  // Load the devtools script
-  const script = document.createElement("script");
-  script.src = "devtools.js";
-  document.body.appendChild(script);
-});
+import HTML from "url:./panels/panel.html"
 
-// Export an empty object to satisfy TypeScript module requirements
-export {};
+chrome.devtools.panels.create(
+  "BrowserTools MCP",
+  null,
+  // See: https://github.com/PlasmoHQ/plasmo/issues/106#issuecomment-1188539625
+  HTML.split("/").pop()
+)
+
+function IndexDevtools() {
+  return (
+    <h2>
+      Welcome to your <a href="https://www.plasmo.com">Plasmo</a> Extension!
+    </h2>
+  )
+}
+
+export default IndexDevtools
