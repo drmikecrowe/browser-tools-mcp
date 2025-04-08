@@ -1,5 +1,6 @@
 import { sendToBackground } from "@plasmohq/messaging"
 
+import { sendConnectionStatus } from ".."
 import type { BrowserConnectorSettings } from "../../store/browserConnectorSettings"
 import { validateServerIdentity } from "../utils/validateServerIdentity"
 
@@ -206,24 +207,24 @@ export class WebSocketManager {
   public async captureScreenshot(tabId: number): Promise<ScreenshotResponse> {
     try {
       console.log("Requesting screenshot capture for tab:", tabId)
-      
+
       // Use Plasmo messaging to request screenshot from background
       const response = await sendToBackground({
         name: "capture-screenshot",
-        body: { 
+        body: {
           tabId,
           screenshotPath: this.settings.screenshotPath || ""
         }
-      });
-      
+      })
+
       console.log("Screenshot capture response:", response)
-      return response;
+      return response
     } catch (error) {
-      console.error("Error capturing screenshot:", error);
+      console.error("Error capturing screenshot:", error)
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
-      };
+      }
     }
   }
 
@@ -250,7 +251,7 @@ export class WebSocketManager {
     try {
       // Create WebSocket URL with proper protocol
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-      
+
       // Add the extension-ws path that the server expects
       const wsUrl = `${wsProtocol}//${this.settings.serverHost}:${this.settings.serverPort}/extension-ws`
 
@@ -310,7 +311,16 @@ export class WebSocketManager {
       // Start heartbeat interval
       this.startHeartbeatInterval()
 
-      // Notify of connection state change
+      // Get server info for connection status update
+      const serverInfo = {
+        name: "Browser Tools MCP",
+        version: "1.0.0" // Default version since remoteVersion isn't in settings
+      }
+
+      // Send connection status update using Plasmo port messaging
+      sendConnectionStatus(true, serverInfo)
+
+      // Notify of connection state change through callback
       if (this.onConnectionStateChanged) {
         this.onConnectionStateChanged(true)
       }
@@ -329,7 +339,10 @@ export class WebSocketManager {
       this.clearHeartbeatInterval()
       this.ws = null
 
-      // Notify of connection state change
+      // Send connection status update using Plasmo port messaging
+      sendConnectionStatus(false)
+
+      // Notify of connection state change through callback
       if (this.onConnectionStateChanged) {
         this.onConnectionStateChanged(false)
       }
@@ -488,10 +501,10 @@ export class WebSocketManager {
    */
   private handleTakeScreenshotMessage(message: any): void {
     console.log("Handling take-screenshot message:", message)
-    
+
     // Get the current tab ID
     const tabId = chrome.devtools.inspectedWindow.tabId
-    
+
     // Send a message directly to the background script
     chrome.runtime.sendMessage(
       {
@@ -502,22 +515,30 @@ export class WebSocketManager {
       },
       (response) => {
         if (chrome.runtime.lastError) {
-          console.error("Error sending screenshot request:", chrome.runtime.lastError)
-          
+          console.error(
+            "Error sending screenshot request:",
+            chrome.runtime.lastError
+          )
+
           // Send error to server
           this.sendMessage({
             type: "screenshot-error",
-            error: chrome.runtime.lastError.message || "Failed to capture screenshot",
+            error:
+              chrome.runtime.lastError.message ||
+              "Failed to capture screenshot",
             requestId: message.requestId || Date.now().toString()
           }).catch((sendError) => {
             console.error("Error sending screenshot error:", sendError)
           })
           return
         }
-        
+
         if (response && response.success && response.data) {
-          console.log("Screenshot captured successfully, data URL length:", response.data.length)
-          
+          console.log(
+            "Screenshot captured successfully, data URL length:",
+            response.data.length
+          )
+
           // Send screenshot data back to server
           this.sendMessage({
             type: "screenshot-data",

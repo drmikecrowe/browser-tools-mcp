@@ -1,26 +1,23 @@
-import { devtoolsSettings } from "../"
+import { wipeLogs as wipeLogsViaPlasmo } from "~messaging/plasmoMessaging"
+
+import { devtoolsSettings } from ".."
 
 // Function to clear logs on the server
-export function wipeLogs() {
+export async function wipeLogs() {
   console.log("Wiping all logs...")
 
-  const serverUrl = `http://${devtoolsSettings.serverHost}:${devtoolsSettings.serverPort}/wipelogs`
-  console.log(`Sending wipe request to ${serverUrl}`)
+  try {
+    const response = await wipeLogsViaPlasmo(
+      devtoolsSettings.serverHost,
+      devtoolsSettings.serverPort
+    )
 
-  fetch(serverUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`)
-      }
-      return response.json()
-    })
-    .then((data) => {
-      console.log("Logs wiped successfully:", data)
-    })
-    .catch((error) => {
-      console.error("Error wiping logs:", error)
-    })
+    if (response.success) {
+      console.log("Logs wiped successfully:", response.message)
+    } else {
+      console.error("Error wiping logs:", response.message)
+    }
+  } catch (error) {
+    console.error("Error wiping logs:", error)
+  }
 }

@@ -1,7 +1,7 @@
 import { validateServerIdentity } from "~devtools/utils/validateServerIdentity"
+import { sendToBrowserConnector as sendToBrowserConnectorViaPlasmo } from "~messaging/plasmoMessaging"
 
-import { devtoolsSettings } from "../"
-import { processJsonString } from "./processJsonString"
+import { devtoolsSettings } from ".."
 
 // Helper to send logs to browser-connector
 export async function sendToBrowserConnector(logData) {
@@ -11,7 +11,7 @@ export async function sendToBrowserConnector(logData) {
   }
 
   // First, ensure we're connecting to the right server
-  if (!(await validateServerIdentity())) {
+  if (!(await validateServerIdentity(devtoolsSettings))) {
     console.error(
       "Cannot send logs: Not connected to a valid browser tools server"
     )
@@ -23,91 +23,29 @@ export async function sendToBrowserConnector(logData) {
     timestamp: logData.timestamp
   })
 
-  // Process any string fields that might contain JSON
-  const processedData = { ...logData }
+  try {
+    // Get the current tab ID
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    const currentTabId = tabs[0]?.id
 
-  if (logData.type === "network-request") {
-    console.log("Processing network request")
-    if (processedData.requestBody) {
-      console.log("Request body size before:", processedData.requestBody.length)
-      processedData.requestBody = processJsonString(
-        processedData.requestBody,
-        devtoolsSettings.stringSizeLimit
-      )
-      console.log("Request body size after:", processedData.requestBody.length)
+    if (!currentTabId) {
+      console.error("No active tab found")
+      return
     }
-    if (processedData.responseBody) {
-      console.log(
-        "Response body size before:",
-        processedData.responseBody.length
-      )
-      processedData.responseBody = processJsonString(
-        processedData.responseBody,
-        devtoolsSettings.stringSizeLimit
-      )
-      console.log(
-        "Response body size after:",
-        processedData.responseBody.length
-      )
-    }
-  } else if (
-    logData.type === "console-log" ||
-    logData.type === "console-error"
-  ) {
-    console.log("Processing console message")
-    if (processedData.message) {
-      console.log("Message size before:", processedData.message.length)
-      processedData.message = processJsonString(
-        processedData.message,
-        devtoolsSettings.stringSizeLimit
-      )
-      console.log("Message size after:", processedData.message.length)
-    }
-  }
 
-  // Add settings to the request
-  const payload = {
-    data: {
-      ...processedData,
-      timestamp: Date.now()
-    },
-    settings: {
-      logLimit: devtoolsSettings.logLimit,
-      queryLimit: devtoolsSettings.queryLimit,
-      showRequestHeaders: devtoolsSettings.showRequestHeaders,
-      showResponseHeaders: devtoolsSettings.showResponseHeaders
-    }
-  }
-
-  const finalPayloadSize = JSON.stringify(payload).length
-  console.log("Final payload size:", finalPayloadSize)
-
-  if (finalPayloadSize > 1000000) {
-    console.warn("Warning: Large payload detected:", finalPayloadSize)
-    console.warn(
-      "Payload preview:",
-      JSON.stringify(payload).substring(0, 1000) + "..."
+    // Send the data using Plasmo messaging
+    const response = await sendToBrowserConnectorViaPlasmo(
+      logData.type,
+      logData,
+      currentTabId
     )
+
+    if (response.success) {
+      console.log("Log data sent successfully to browser connector")
+    } else {
+      console.error("Error sending log data:", response.error)
+    }
+  } catch (error) {
+    console.error("Error sending log data to browser connector:", error)
   }
-
-  const serverUrl = `http://${devtoolsSettings.serverHost}:${devtoolsSettings.serverPort}/extension-log`
-  console.log(`Sending log to ${serverUrl}`)
-
-  fetch(serverUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`)
-      }
-      return response.json()
-    })
-    .then((data) => {
-      console.log("Log sent successfully:", data)
-    })
-    .catch((error) => {
-      console.error("Error sending log:", error)
-    })
 }

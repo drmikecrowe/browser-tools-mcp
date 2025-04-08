@@ -1,4 +1,5 @@
 import { Storage } from "@plasmohq/storage"
+import { MessageName } from "~messaging/plasmoMessaging"
 
 // Define the settings interface
 export interface BrowserConnectorSettings {
@@ -59,15 +60,31 @@ export async function getSettings(): Promise<BrowserConnectorSettings> {
 export async function saveSettings(
   settings: Partial<BrowserConnectorSettings>
 ): Promise<void> {
+  // Get current settings first
   const currentSettings = await getSettings()
+  
+  // Merge with new settings
   const newSettings = { ...currentSettings, ...settings }
+  
+  // Save to storage
   await storage.set(SETTINGS_KEY, newSettings)
-
-  // Notify all parts of the extension about the settings update
-  chrome.runtime.sendMessage({
-    type: "SETTINGS_UPDATED",
-    settings: newSettings
-  })
+  console.log("Background: Saved settings:", newSettings)
+  
+  // Broadcast settings update using Plasmo's messaging
+  try {
+    // This is handled by the browser extension's event system
+    // and the settings-updated.ts handler in the background script
+    chrome.runtime.sendMessage({
+      name: MessageName.SETTINGS_UPDATED,
+      body: {
+        settings: newSettings
+      }
+    }).catch(error => {
+      console.error("Error broadcasting settings update:", error)
+    })
+  } catch (error) {
+    console.error("Error broadcasting settings update:", error)
+  }
 }
 
 /**
@@ -87,10 +104,10 @@ export function onSettingsChanged(
 
   chrome.storage.onChanged.addListener(listener)
 
-  // Also listen for runtime messages about settings updates
+  // Listen for runtime messages about settings updates from Plasmo
   const messageListener = (message) => {
-    if (message.type === "SETTINGS_UPDATED") {
-      callback(message.settings)
+    if (message.name === MessageName.SETTINGS_UPDATED && message.body?.settings) {
+      callback(message.body.settings)
     }
   }
 

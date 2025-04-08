@@ -1,4 +1,4 @@
-import { currentTabId } from "../"
+import { currentTabId } from ".."
 import { sendToBrowserConnector } from "./sendToBrowserConnector"
 
 // Move the console message listener outside the panel creation
