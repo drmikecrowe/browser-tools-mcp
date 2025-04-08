@@ -11,6 +11,8 @@
     "build": "rimraf build/* && npm run build:firefox && npm run build:chrome"
   },
   "dependencies": {
+    "@ant-design/cssinjs": "1.18.2",
+    "antd": "5.13.2",
     "@plasmohq/messaging": "^0.7.1",
     "@plasmohq/storage": "^1.15.0",
     "plasmo": "0.90.3",
@@ -38,7 +40,10 @@
       "storage",
       "tabs"
     ],
-    "devtools_page": "devtools.html"
+    "devtools_page": "devtools.html",
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' https://github.githubassets.com 'unsafe-eval'; object-src 'self'"
+    }
   },
   "firefox": {
     "manifest_v2": {

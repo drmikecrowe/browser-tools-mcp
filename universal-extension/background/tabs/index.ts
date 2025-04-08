@@ -53,7 +53,7 @@ export function setupTabTracking(): void {
       console.log(`Background: Tab ${tabId} finished loading, status: complete`)
 
       // Update URL in our cache and notify server of completion
-      if (tab.url) {
+      if (tab && tab.url) {
         tabUrls.set(tabId, tab.url)
         // Send final URL to server with page_complete status
         updateServerWithUrl(tabId, tab.url, "page_complete")

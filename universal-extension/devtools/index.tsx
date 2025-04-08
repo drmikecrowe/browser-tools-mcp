@@ -1,6 +1,9 @@
 // devtools.js
 
-import HTML from "url:./panels/root/simple-panel.html"
+// import HTML from "url:./panels/root/simple-panel.html"
+// import HTML from "url:./panels/old/panel.html"
+// import HTML from "url:./panels/config/config.html"
+import HTML from "url:./panels/panel.html"
 
 import {
   defaultSettings,

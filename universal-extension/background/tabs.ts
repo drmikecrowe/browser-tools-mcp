@@ -1,5 +1,5 @@
-import { updateServerWithUrl } from "./utils/updateServerWithUrl"
 import { browserConnectorSettings, isConnectedToServer } from "./index"
+import { updateServerWithUrl } from "./utils/updateServerWithUrl"
 
 // Map to track tab URLs
 export const tabUrls = new Map<number, string>()
@@ -22,7 +22,7 @@ export function setupTabTracking() {
   chrome.tabs.onActivated.addListener(async (activeInfo) => {
     try {
       const tab = await chrome.tabs.get(activeInfo.tabId)
-      if (tab.url) {
+      if (tab && tab.url) {
         handleTabActivation(activeInfo.tabId, tab.url)
       }
     } catch (error) {
@@ -44,7 +44,7 @@ export function setupTabTracking() {
  */
 function handleTabUpdate(tabId: number, url: string) {
   console.log(`Background: Tab ${tabId} updated with URL: ${url}`)
-  
+
   // Update our cache
   tabUrls.set(tabId, url)
 
@@ -61,7 +61,7 @@ function handleTabUpdate(tabId: number, url: string) {
  */
 function handleTabActivation(tabId: number, url: string) {
   console.log(`Background: Tab ${tabId} activated with URL: ${url}`)
-  
+
   // Update our cache
   tabUrls.set(tabId, url)
 
